@@ -1,4 +1,3 @@
-This is code to train and validate a machine learning algorithm to detect spots of different sizes in an image.
+This is code to identify and count spots in an image. The code is split 
+into two approaches: a conventional approach using difference of Gaussians and a machine learning approach.
 
-Jian Wei Tay
-May 4, 2022
