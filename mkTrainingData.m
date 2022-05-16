@@ -2,60 +2,91 @@
 clearvars
 clc
 
-
 %options
-outputSz = [256 256];
-particleSz = 0.5;
+outputSz = [96 96];
+particleSz = [0.5; 1; 3; 5; 7; 20; 30; 40];
+numParticlesRange = [...
+    15 80; ...
+    10 40; ...
+    4 12; ...
+    2 8; ...
+    1 3; ...
+    1 2; ...
+    1 1; ...
+    1 1];
+
 particleSzVar = 0.2;
 
 particleAVar = 0.8;
 amplitudeRange = 2;
 
-numParticlesRange = [100 500];
+outputDir = 'training_96x96_subset';
 
 polarity = 'dark';
 
-numImages = 1000;
+numImages = 100;  %Each
 
-for cntImage = 1:numImages
+ctr = 0;
 
-    %Decide on number of particles
-    numParticles = round(numParticlesRange(1) + ...
-        (numParticlesRange(2) - numParticlesRange(1)) * rand(1));
+for iP = 1:numel(particleSz)
+    fprintf('Particles %.0f/%.0f\n', iP, numel(particleSz));
 
-    %Generate a series of coordinates - this is the ground truth
-    xyPos = [(outputSz - 1) .* rand(numParticles, 2) + 1];
+    for cntImage = 1:numImages
 
-    %Generate the images
-    outputI = zeros(outputSz);
+        %Decide on number of particles
+        numParticles = round(numParticlesRange(iP, 1) + ...
+            (numParticlesRange(iP, 2) - numParticlesRange(iP, 1)) * rand(1));
 
-    xGrid = 1:outputSz(2);
-    yGrid = 1:outputSz(1);
-    [xGrid, yGrid] = meshgrid(xGrid, yGrid);
+        %Generate a series of coordinates - this is the ground truth
+        xyPos = [(outputSz - 1) .* rand(numParticles, 2) + 1];
 
-    gtruth = false(outputSz);
+        %Generate the images
+        outputI = zeros(outputSz);
 
-    for ii = 1:numParticles
+        xGrid = 1:outputSz(2);
+        yGrid = 1:outputSz(1);
+        [xGrid, yGrid] = meshgrid(xGrid, yGrid);
 
-        outputI = outputI + ((1 - particleAVar) + (particleAVar) * rand(1) * amplitudeRange) * exp(-((xGrid - xyPos(ii, 1)).^2 + (yGrid -xyPos(ii, 2)).^2)/(2 * ((1 - particleSzVar) + (particleSzVar) * rand(1)) * particleSz(1)^2));
+        gtruth = false(outputSz);
 
-        gtruth(round(xyPos(ii, 2)), round(xyPos(ii, 1))) = true;
+        for ii = 1:numParticles
+
+            outputI = outputI + ((1 - particleAVar) + (particleAVar) * rand(1) * amplitudeRange) * exp(-((xGrid - xyPos(ii, 1)).^2 + (yGrid -xyPos(ii, 2)).^2)/(2 * ((1 - particleSzVar) + (particleSzVar) * rand(1)) * particleSz(iP)^2));
+
+            gtruth(round(xyPos(ii, 2)), round(xyPos(ii, 1))) = true;
+
+        end
+
+        %     imshow(outputI, [])
+        %     keyboard
+
+        %Convert to uint16
+        outputI = im2uint16(outputI);
+
+        if strcmpi(polarity, 'dark')
+            outputI = imcomplement(outputI);
+        end
+
+        %     showoverlay(outputI, gtruth)
+        %     keyboard
+
+        %Write to disk
+        if ~exist(fullfile(outputDir, 'img'), 'dir')
+            mkdir(fullfile(outputDir, 'img'));
+        end
+        imwrite(outputI, fullfile(outputDir, 'img', sprintf('img%04.0f.tif', ctr)), ...
+            'Compression', 'none');
+
+        %Save ground truth
+        if ~exist(fullfile(outputDir, 'gtruth'), 'dir')
+            mkdir(fullfile(outputDir, 'gtruth'));
+        end
+
+        ctr = ctr + 1;
+        imwrite(gtruth, fullfile(outputDir, 'gtruth', sprintf('img%04.0f.tif', ctr)), ...
+            'Compression', 'none');
+
 
     end
-
-    %Convert to uint16
-    outputI = im2uint16(outputI);
-
-    showoverlay(outputI, gtruth)
-    keyboard
-
-%     %Write to disk
-%     imwrite(outputI, fullfile('validation', 'img', sprintf('img%04.0f.tif', cntImage)));
-% 
-%     %Save ground truth
-%     imwrite(gtruth, fullfile('validation', 'gtruth', sprintf('img%04.0f.tif', cntImage)));
-
-
 end
-
 % imshow(imcomplement(outputI), [])
